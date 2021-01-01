@@ -15,7 +15,9 @@ public interface SeckillActivityMapper {
 
     int updateByPrimaryKeySelective(SeckillActivity record);
 
-    List<SeckillActivity> querySeckillActivitysByStatus(int activityStatus);
-
     int updateByPrimaryKey(SeckillActivity record);
+
+    int lockStock(Long id);
+
+    List<SeckillActivity> querySeckillActivitysByStatus(int activityStatus);
 }

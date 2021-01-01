@@ -32,4 +32,14 @@ public class SeckillActivityDaoImpl implements SeckillActivityDao {
     public void updateSeckillActivity(SeckillActivity seckillActivity) {
         seckillActivityMapper.updateByPrimaryKey(seckillActivity);
     }
+
+    @Override
+    public boolean lockStock(Long seckillActivityId) {
+        int result = seckillActivityMapper.lockStock(seckillActivityId);
+        if (result < 1) {
+            System.out.println("Failed to lock stock");
+            return false;
+        }
+        return true;
+    }
 }
