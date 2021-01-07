@@ -17,13 +17,14 @@ public class RocketMqProducer {
      * @param body
      * @throws Exception
      */
-    public void sendMessage(String topic,String body) throws Exception{
+    public void sendMessage(String topic,String body) throws Exception
+    {
         Message message = new Message(topic,body.getBytes());
         rocketMQTemplate.getProducer().send(message);
     }
 
-    public void sendDelayMessage(String topic, String body, int delayTimeLevel)
-            throws Exception {
+    public void sendDelayMessage(String topic, String body, int delayTimeLevel) throws Exception
+    {
         Message message = new Message(topic, body.getBytes());
         message.setDelayTimeLevel(delayTimeLevel);
         rocketMQTemplate.getProducer().send(message);

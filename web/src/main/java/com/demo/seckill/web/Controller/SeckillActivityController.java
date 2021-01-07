@@ -1,14 +1,18 @@
 package com.demo.seckill.web.Controller;
 
+import com.demo.seckill.dataaccess.dao.OrderDao;
 import com.demo.seckill.dataaccess.dao.SeckillActivityDao;
 import com.demo.seckill.dataaccess.dao.SeckillCommodityDao;
+import com.demo.seckill.database.po.Order;
 import com.demo.seckill.database.po.SeckillActivity;
 import com.demo.seckill.database.po.SeckillCommodity;
+import com.demo.seckill.web.Service.SeckillActivityService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.math.BigDecimal;
 import java.text.ParseException;
@@ -21,6 +25,12 @@ public class SeckillActivityController {
 
     @Autowired
     private SeckillActivityDao seckillActivityDao;
+
+    @Autowired
+    OrderDao orderDao;
+
+    @Autowired
+    SeckillActivityService seckillActivityService;
 
     @RequestMapping("/addSeckillActivity")
     public String addSeckillActivity() {
@@ -83,5 +93,28 @@ public class SeckillActivityController {
         resultMap.put("commodityName", seckillCommodity.getCommodityName());
         resultMap.put("commodityDesc", seckillCommodity.getCommodityDesc());
         return "seckill_item";
+    }
+
+    @RequestMapping("/seckill/orderQuery/{orderNo}")
+    public ModelAndView orderQuery(@PathVariable String orderNo) {
+        System.out.println("订单查询，订单号：" + orderNo);
+        Order order = orderDao.queryOrder(orderNo);
+        ModelAndView modelAndView = new ModelAndView();
+        if (order != null) {
+            modelAndView.setViewName("order");
+            modelAndView.addObject("order", order);
+            SeckillActivity seckillActivity =
+                    seckillActivityDao.querySeckillActivityById(order.getSeckillActivityId());
+            modelAndView.addObject("seckillActivity", seckillActivity);
+        } else {
+            modelAndView.setViewName("order_wait");
+        }
+        return modelAndView;
+    }
+
+    @RequestMapping("/seckill/payOrder/{orderNo}")
+    public String payOrder(@PathVariable String orderNo) throws Exception {
+        seckillActivityService.payOrderProcess(orderNo);
+        return "redirect:/seckill/orderQuery/" + orderNo;
     }
 }

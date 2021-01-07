@@ -13,18 +13,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.UnsupportedEncodingException;
-import java.util.Date;
 
 @Slf4j
 @Component
-@RocketMQMessageListener(topic = "seckill_order", consumerGroup = "seckill_order_group")
-public class OrderConsumer implements RocketMQListener<MessageExt>
+@RocketMQMessageListener(topic = "pay_check", consumerGroup = "seckill_order_check_group")
+public class OrderStatusCheckConsumer implements RocketMQListener<MessageExt>
 {
-    private static final String TOPIC_NAME_ORDER_STATUS = "pay_check";
-
-    @Autowired
-    private RocketMqProducer rocketMQService;
-
     @Autowired
     private OrderDao orderDao;
     @Autowired
@@ -37,30 +31,19 @@ public class OrderConsumer implements RocketMQListener<MessageExt>
         try
         {
             String message = new String(messageExt.getBody(), "UTF-8");
-            System.out.println("Received message:" + message);
+            log.info("Received message:" + message);
 
             Order order = JSON.parseObject(message, Order.class);
-            order.setCreateTime(new Date());
-            boolean lockStockResult =
-                    seckillActivityDao.lockStock(order.getSeckillActivityId());
+            Order orderInfo = orderDao.queryOrder(order.getOrderNo());
 
-            if (lockStockResult)
-            {
-                order.setOrderStatus(1);
+            if (orderInfo.getOrderStatus() != 2) {
+                log.info("Order overdue, order number is " + orderInfo.getOrderNo());
+                orderInfo.setOrderStatus(99);
+                orderDao.updateOrder(orderInfo);
             }
-            else {
-                order.setOrderStatus(0);
-            }
-            orderDao.insertOrder(order);
-            log.info("Order created in DB: " + order.getOrderNo());
-            rocketMQService.sendDelayMessage(TOPIC_NAME_ORDER_STATUS, JSON.toJSONString(order), 5);
-            log.info("Countdown message sent " + order.getOrderNo());
         }
         catch (UnsupportedEncodingException e)
         {
-            e.printStackTrace();
-        }
-        catch (Exception e) {
             e.printStackTrace();
         }
     }

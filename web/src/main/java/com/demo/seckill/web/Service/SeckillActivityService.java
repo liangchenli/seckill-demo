@@ -1,25 +1,31 @@
 package com.demo.seckill.web.Service;
 
+import com.alibaba.fastjson.JSON;
+import com.demo.seckill.dataaccess.dao.OrderDao;
 import com.demo.seckill.dataaccess.dao.SeckillActivityDao;
 import com.demo.seckill.database.po.Order;
 import com.demo.seckill.database.po.SeckillActivity;
 import com.demo.seckill.incrementalidgen.SnowFlakeIdGen;
-import com.demo.seckill.web.Redis.RedisService;
 import com.demo.seckill.rocketmq.RocketMqProducer;
+import com.demo.seckill.web.Redis.RedisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.alibaba.fastjson.JSON;
+
+import java.util.Date;
 
 @Service
 public class SeckillActivityService
 {
-    private static final String TOPIC_NAME = "seckill_order";
+    private static final String TOPIC_NAME_ORDER = "seckill_order";
 
     private RedisService redisService;
     private RocketMqProducer rocketMQService;
     private SeckillActivityDao seckillActivityDao;
 
     private SnowFlakeIdGen snowFlake = new SnowFlakeIdGen(1, 1);
+
+    @Autowired
+    OrderDao orderDao;
 
     @Autowired
     public SeckillActivityService(RedisService redisService, RocketMqProducer rocketMQService, SeckillActivityDao seckillActivityDao)
@@ -45,13 +51,10 @@ public class SeckillActivityService
 
     public Order createOrder(long seckillActivityId, long userId) throws Exception
     {
-        /*
-         * 1.创建订单
-         */
         SeckillActivity seckillActivity =
                 seckillActivityDao.querySeckillActivityById(seckillActivityId);
         Order order = new Order();
-//采用雪花算法生成订单ID
+
         order.setOrderNo(String.valueOf(snowFlake.nextId()));
         order.setSeckillActivityId(seckillActivity.getId());
         order.setUserId(userId);
@@ -59,8 +62,21 @@ public class SeckillActivityService
         /*
          *2.发送创建订单消息
          */
-        rocketMQService.sendMessage(TOPIC_NAME, JSON.toJSONString(order));
+        rocketMQService.sendMessage(TOPIC_NAME_ORDER, JSON.toJSONString(order));
+
         return order;
     }
 
+    public void payOrderProcess(String orderNo) {
+        System.out.println("完成支付订单 订单号：" + orderNo);
+        Order order = orderDao.queryOrder(orderNo);
+        boolean deductStockResult =
+                seckillActivityDao.deductStock(order.getSeckillActivityId());
+        if (deductStockResult) {
+            order.setPayTime(new Date());
+// 订单状态 0、没有可用库存，无效订单 1、已创建等待支付 2、完成支付
+            order.setOrderStatus(2);
+            orderDao.updateOrder(order);
+        }
+    }
 }
